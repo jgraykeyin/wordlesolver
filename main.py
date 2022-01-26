@@ -2,269 +2,170 @@ import enchant
 import itertools
 from collections import Counter
 from operator import itemgetter
+import random
 
-d = enchant.Dict("en_US")
-print(d.check("Hello"))
+# Empty list placeholder for placing the correct letters in correct position (green)
+# This should eventually become the solution to the puzzle
+solution = ["","","","",""]
 
-# First word attempt by the user
-while True:
-    word1 = str(input("First word attempt:"))
+# Empty list placeholder to hold correct letters in wrong position (yellow)
+yellows = []
 
-    if len(word1) == 5:
-        break
-    else:
-        print("Please enter a 5 letter word")
-
-# Init empty list to hold letter statuses
-word1_data = []
-
-# Get the returned status of each letter
-count=1
-for i in word1:
-    print("1) Correct [green]")
-    print("2) Wrong place [yellow]")
-    print("3) Not in word [black]")
-
-    while True:
-        count+=1
-        status = int(input("Status of letter #{} -> {}: ".format(count,i.upper())))
-
-        if status >= 1 and status <= 3:
-            word1_data.append({
-                "letter":i.lower(),
-                "status":status
-            })
-            break
-        else:
-            print("Enter 1,2 or 3")
+# And here's our trust alphabet. We'll remove letters from this when hints eliminate letters (black / dark grey?)
+alphabet = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
 
 
-# Setup a placeholder so we can move correct letters into it
-holder = [".",".",".",".","."]
+# Function for getting the returned hint information from user
+def userColorInput(word):
+    word_data = []
+    count=0
+    for i in word:
+        print("1) Correct [green]")
+        print("2) Wrong place [yellow]")
+        print("3) Not in word [black]")
 
-# Hold letters that are in the word, but in the wrong place
-wrong_place = []
+        while True:
+            count+=1
+            status = int(input("Status of letter #{} -> {}: ".format(count,i.upper())))
 
-# Alphabet that we'll use to remove letters from as they get eliminated
-alphabets = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
+            if status >= 1 and status <= 3:
+                word_data.append({
+                    "letter":i.lower(),
+                    "status":status
+                })
+                break
+            else:
+                print("Enter 1, 2 or 3")
+
+    return word_data
 
 
-# Move any correct letters into the placeholder
-count=0
-for data in word1_data:
-    if data["status"] == 1:
-        holder[count] = data["letter"]
-    elif data["status"] == 2:
-        wrong_place.append(data["letter"])
-    elif data["status"] == 3:
-        # Remove letter from the alphabet if it's been eliminated
-        if data["letter"] in alphabets:
-            alphabets.remove(data["letter"])
-    count+=1
+# Function for moving letters into their proper placeholders
+def buildLetterCollections(data):
     
-print(holder)
-print(alphabets)
+    # Make sure we can access these lists from inside the function
+    global solution
+    global yellows
+    global alphabet
 
-# Generate possible letter combos based on letters removed from alphabet
-keywords = [''.join(i) for i in itertools.product(alphabets, repeat = 5)]
+    # Iterate through the status of each letter
+    count=0
+    for d in data:
+        # Move a correct letter into the correct position of the solution
+        if d["status"] == 1:
+            solution[count] = d["letter"]
+        # Make note of the correct letter and it's wrong position
+        elif d["status"] == 2:
+            yellows.append({
+                "letter":d["letter"],
+                "not":count
+            })
+        # Remove the eliminated letter from the alphabet 
+        elif d["status"] == 3:
+            if d["letter"] in alphabet:
+                alphabet.remove(d["letter"]) 
+        count+=1
 
-possible_words = []
-# Check to see if letter combo is a word
-for k in keywords:
-    if d.check(k) == True:
-        possible_words.append(k)
 
+# Function to generate the best solution attempts for the solution
+def generateAnswers():
 
-matches = []
-# Start matching correct characters with the possible words
-for p in possible_words:
+    print("Thinking...")
+    
+    global alphabet
+    global solution
+    global yellows
 
-    if holder[0] != "." and holder[1] != "." and holder[2] != "." and holder[3] != "." and holder[4] != ".":
+    # Initialize our english dictionary
+    d = enchant.Dict("en_US")
+    
+    # Generate possible letter combos based on letters removed from alphabet
+    keywords = [''.join(i) for i in itertools.product(alphabet, repeat = 5)]
+
+    # Placeholder to catch the actual english words from the keywords list
+    possible_words = []
+    
+    # Check the words against the english dictionary to make sure it's valid and save it
+    for k in keywords:
+        if d.check(k) == True:
+            possible_words.append(k)
+
+    # Placeholder for the words that match up with our hints
+    matches = []
+
+    for word in possible_words:
         i=0
         while i < 5:
-            if holder[i] == p[i]:
-                if wrong_place:
-                    for w in wrong_place:
-                        if w in p:
-                            matches.append(p)
+            if solution[i] == word[i]:
+                if yellows:
+                   for item in yellows:
+                       if item["letter"] in word:
+                           matches.append(word)
                 else:
-                    matches.append(p)
+                    matches.append(word)
             i+=1
-    else:
-        if wrong_place:
-            for w in wrong_place:
-                if w in p:
-                    matches.append(p)
-        
-# Save the number of duplicates to find the most probable answer
-maybes = []
-list_of_all_values = []
 
-for m in matches:
-    dupes = matches.count(m)
-    if dupes >= 2 and m not in list_of_all_values:
-        maybes.append({
-            "word":m,
-            "score":dupes
-        })
-        # Update list of duplicates for the maybes
-        list_of_all_values = [value for elem in maybes for value in elem.values()]
-
-sorted_maybes = sorted(maybes, key=itemgetter("score"), reverse=True)
-
-top=0
-for s in sorted_maybes:
-    if top == 0:
-        top = s["score"]
-
-    if top==5:
-        if s["score"] < 5:
-            continue
-        else:
-            print("{} [{}]".format(s["word"].upper(), s["score"]))
-    elif top==4:
-        if s["score"] < 4:
-            continue
-        else:
-            print("{} [{}]".format(s["word"].upper(), s["score"]))
-    elif top==3:
-        if s["score"] < 3:
-            continue
-        else:
-            print("{} [{}]".format(s["word"].upper(), s["score"]))
-    elif top==2:
-        if s["score"] < 2:
-            continue
-        else:
-            print("{} [{}]".format(s["word"].upper(), s["score"]))
-    elif top==1:
-        if s["score"] < 1:
-            continue
-        else:
-            print("{} [{}]".format(s["word"].upper(), s["score"]))
-
-
-# Second word attempt by the user
-while True:
-    word2 = str(input("Second word attempt:"))
-
-    if len(word2) == 5:
-        break
-    else:
-        print("Please enter a 5 letter word")
-
-word2_data = []
-
-# Get the returned status of each letter
-count=1
-for i in word2:
-    print("1) Correct [green]")
-    print("2) Wrong place [yellow]")
-    print("3) Not in word [black]")
-
-    while True:
-        count+=1
-        status = int(input("Status of letter #{} -> {}: ".format(count,i.upper())))
-
-        if status >= 1 and status <= 3:
-            word2_data.append({
-                "letter":i.lower(),
-                "status":status
-            })
-            break
-        else:
-            print("Enter 1,2 or 3")
-
-
-# Move any correct letters into the placeholder
-count=0
-for data in word2_data:
-    if data["status"] == 1:
-        holder[count] = data["letter"]
-    elif data["status"] == 2:
-        wrong_place.append(data["letter"])
-    elif data["status"] == 3:
-        # Remove letter from the alphabet if it's been eliminated
-        if data["letter"] in alphabets:
-            alphabets.remove(data["letter"])
-    count+=1
-    
-print(holder)
-print(alphabets)
-
-# Generate possible letter combos based on letters removed from alphabet
-keywords = [''.join(i) for i in itertools.product(alphabets, repeat = 5)]
-
-possible_words = []
-# Check to see if letter combo is a word
-for k in keywords:
-    if d.check(k) == True:
-        possible_words.append(k)
-
-matches = []
-# Start matching correct characters with the possible words
-for p in possible_words:
-
-    if holder[0] != "." and holder[1] != "." and holder[2] != "." and holder[3] != "." and holder[4] != ".":
+    for word in matches:
         i=0
         while i < 5:
-            if holder[i] == p[i]:
-                if wrong_place:
-                    for w in wrong_place:
-                        if w in p:
-                            matches.append(p)
-                else:
-                    matches.append(p)
+            for item in yellows:
+                if i == item["not"] and item["letter"] == word[i] and word in matches:
+                    matches.remove(word)
+                    break
             i+=1
-    else:
-        if wrong_place:
-            for w in wrong_place:
-                if w in p:
-                    matches.append(p)
 
-# Save the number of duplicates to find the most probable answer
-maybes = []
-list_of_all_values = []
+    maybes = []
+    list_of_all_values = []               
 
-for m in matches:
-    dupes = matches.count(m)
-    if dupes >= 2 and m not in list_of_all_values:
-        maybes.append({
-            "word":m,
-            "score":dupes
-        })
-        # Update list of duplicates for the maybes
-        list_of_all_values = [value for elem in maybes for value in elem.values()]
+    for m in matches:
+        dupes = matches.count(m)
+        if dupes >= 2 and m not in list_of_all_values:
+            maybes.append({
+                "word":m,
+                "score":dupes
+            })
+            list_of_all_values = [value for elem in maybes for value in elem.values()]
 
-sorted_maybes = sorted(maybes, key=itemgetter("score"), reverse=True)
+    sorted_maybes = sorted(maybes, key=itemgetter("score"), reverse=True)
 
-top=0
-for s in sorted_maybes:
-    if top == 0:
-        top = s["score"]
+    return sorted_maybes
 
-    if top==5:
-        if s["score"] < 5:
-            continue
-        else:
-            print("{} [{}]".format(s["word"].upper(), s["score"]))
-    elif top==4:
-        if s["score"] < 4:
-            continue
-        else:
-            print("{} [{}]".format(s["word"].upper(), s["score"]))
-    elif top==3:
-        if s["score"] < 3:
-            continue
-        else:
-            print("{} [{}]".format(s["word"].upper(), s["score"]))
-    elif top==2:
-        if s["score"] < 2:
-            continue
-        else:
-            print("{} [{}]".format(s["word"].upper(), s["score"]))
-    elif top==1:
-        if s["score"] < 1:
-            continue
-        else:
-            print("{} [{}]".format(s["word"].upper(), s["score"]))
+
+# List of good starting words according to the internets
+starters = ["soare","roate","raise"]
+
+# Grab a random start word
+first_choice = random.choice(starters)
+
+# Show the selected word that we're starting with.
+# User will have to enter this word into the game so we can get our hints.
+print("\n*** First try: {} ***\n".format(first_choice.upper()))
+
+# Ask the user to enter the hints returned from our first attempt
+word_data = userColorInput(first_choice)
+
+# Start building the solution, populate our placeholders
+buildLetterCollections(word_data)
+
+# Generate possible letter combos based on letters removed from alphabet
+# TODO: This step needs to be optimized, it's way too slow.
+next_choices = generateAnswers()
+
+print("*** Best words for next try: ***")
+for item in next_choices:
+    print("{} ({})".format(item["word"].upper(),item["score"]))
+
+# Ask the user to enter a word from the suggestions provided
+# TODO: Automate this part 
+second_try = str(input("Enter your second try: "))
+
+# Ask the user to enter the hints returned from the second attempt
+second_data = userColorInput(second_try)
+
+buildLetterCollections(second_data)
+
+next_choices = generateAnswers()
+
+print("*** Best words for next try: ***")
+for item in next_choices:
+    print("{} ({})".format(item["word"].upper(),item["score"]))
