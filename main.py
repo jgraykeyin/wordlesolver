@@ -14,7 +14,11 @@ wordle = [
 ]
 
 # List of good starting words to choose from
-starters = ["soare","roate","raise","party"]
+starters = [
+    "adieu","tears","lares","alert","alone","atone","audio","blind",
+    "canoe","cough","media","notes","orate","radio","raise","resin",
+    "senor","steam","stone","tares"
+    ]
 
 # Grab a random start word
 first_try = random.choice(starters)
