@@ -75,7 +75,8 @@ def processAttempt(data):
             i=0
             while i < 5:
                 if type(wordle[i]) == list:
-                    wordle[i].remove(d["letter"])
+                    if d["letter"] in wordle[i]:
+                        wordle[i].remove(d["letter"])
                 i+=1
         count+=1
 
