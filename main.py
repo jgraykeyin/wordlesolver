@@ -136,8 +136,7 @@ while user_try < 7:
         try_word = input("Select word from list: ")
     else:
         # Grab a random start word
-        #try_word = random.choice(starters)
-        try_word = "cough"
+        try_word = random.choice(starters)
 
     # Show the selected word that we're starting with.
     # User will have to enter this word into the game so we can get our hints.
