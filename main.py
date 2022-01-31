@@ -1,4 +1,3 @@
-from typing import List
 import enchant
 import random
 import itertools
@@ -20,8 +19,6 @@ starters = [
     "senor","steam","stone","tares"
     ]
 
-# Grab a random start word
-first_try = random.choice(starters)
 
 # Container for catching all the 'yellow' hints, this will be used for filtering out words
 yellows = []
@@ -77,7 +74,7 @@ def processAttempt(data):
             # Remove this letter from every slot's alphabet
             i=0
             while i < 5:
-                if wordle[i] == List:
+                if type(wordle[i]) == list:
                     wordle[i].remove(d["letter"])
                 i+=1
         count+=1
@@ -123,25 +120,43 @@ def generateNextChoice():
     filtered_words = []
     if yellows:
         for word in possible_words:
-            print(word)
-            check = any(yellow in word for yellow in yellows)
+            check = all(yellow in word for yellow in yellows)
             if check == True:
                 # If the word contains a yellow, move it to the new filtered word list
                 filtered_words.append(word)
             
-
-    print(filtered_words)
+    return filtered_words
         
 
-# Show the selected word that we're starting with.
-# User will have to enter this word into the game so we can get our hints.
-print("\n*** First try: {} ***\n".format(first_try.upper()))
+# Start the main program loop and repeat for each try
+user_try=1
+while user_try < 7:
 
-# Ask the user for the returned hints
-word_data = userColorInput(first_try)
+    if user_try > 1:
+        try_word = input("Select word from list: ")
+    else:
+        # Grab a random start word
+        #try_word = random.choice(starters)
+        try_word = "cough"
 
-# Start processing the attempt
-processAttempt(word_data)
+    # Show the selected word that we're starting with.
+    # User will have to enter this word into the game so we can get our hints.
+    print("\n*** Try #{}: {} ***\n".format(user_try,try_word.upper()))
 
-# Generate a list of possible choices for next try
-next_choices = generateNextChoice()
+    # Ask the user for the returned hints
+    word_data = userColorInput(try_word)
+
+    # Start processing the attempt
+    processAttempt(word_data)
+
+    # Generate a list of possible choices for next try
+    next_choices = generateNextChoice()
+
+    if len(next_choices) == 1:
+        print("Solution: {}".format(next_choices))
+        break
+    else:
+        print("Possible words for next try: \n{}".format(next_choices))
+
+    
+    user_try+=1
