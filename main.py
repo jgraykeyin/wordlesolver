@@ -75,7 +75,6 @@ def generateNextChoice():
     d = enchant.Dict("en_US")
 
     solution = ["","","","",""]
-    words = []
     possible_words = []
 
     # Place all the corrects into the solution slots
