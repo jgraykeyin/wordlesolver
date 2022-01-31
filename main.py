@@ -1,18 +1,23 @@
 import enchant
-import itertools
-from collections import Counter
-from operator import itemgetter
 import random
+import itertools
 
-# Empty list placeholder for placing the correct letters in correct position (green)
-# This should eventually become the solution to the puzzle
-solution = ["","","","",""]
+# Setup an alphabet for each letter slot
+wordle = [
+    ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'],
+    ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'],
+    ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'],
+    ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'],
+    ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'],
+]
 
-# Empty list placeholder to hold correct letters in wrong position (yellow)
+# List of good starting words to choose from
+starters = ["soare","roate","raise","party"]
+
+# Grab a random start word
+first_try = random.choice(starters)
+
 yellows = []
-
-# And here's our trust alphabet. We'll remove letters from this when hints eliminate letters (black / dark grey?)
-alphabet = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
 
 
 # Function for getting the returned hint information from user
@@ -40,132 +45,77 @@ def userColorInput(word):
     return word_data
 
 
-# Function for moving letters into their proper placeholders
-def buildLetterCollections(data):
-    
-    # Make sure we can access these lists from inside the function
-    global solution
+def processAttempt(data):
+    global wordle
     global yellows
-    global alphabet
 
-    # Iterate through the status of each letter
     count=0
     for d in data:
-        # Move a correct letter into the correct position of the solution
         if d["status"] == 1:
-            solution[count] = d["letter"]
-        # Make note of the correct letter and it's wrong position
+            wordle[count] = d["letter"]
         elif d["status"] == 2:
-            yellows.append({
-                "letter":d["letter"],
-                "not":count
-            })
-        # Remove the eliminated letter from the alphabet 
+            if wordle[count]:
+                wordle[count].remove(d["letter"])
+                if d["letter"] not in yellows:
+                    yellows.append(d["letter"])
         elif d["status"] == 3:
-            if d["letter"] in alphabet:
-                alphabet.remove(d["letter"]) 
+            i=0
+            while i < 5:
+                if wordle[i]:
+                    wordle[i].remove(d["letter"])
+                i+=1
         count+=1
 
 
-# Function to generate the best solution attempts for the solution
-def generateAnswers():
-
-    print("Thinking...")
-    
-    global alphabet
-    global solution
+def generateNextChoice():
+    global wordle
     global yellows
 
-    # Initialize our english dictionary
+    # Initialize the dictionary
     d = enchant.Dict("en_US")
-    
-    # Generate possible letter combos based on letters removed from alphabet
-    keywords = [''.join(i) for i in itertools.product(alphabet, repeat = 5)]
 
-    # Placeholder to catch the actual english words from the keywords list
+    solution = ["","","","",""]
+    words = []
     possible_words = []
-    
-    # Check the words against the english dictionary to make sure it's valid and save it
-    for k in keywords:
-        if d.check(k) == True:
-            possible_words.append(k)
 
-    # Placeholder for the words that match up with our hints
-    matches = []
+    # Place all the corrects into the solution slots
+    count=0
+    for w in wordle:
+        if len(w) == 1:
+            solution[count] = w
+        count+=1
 
-    for word in possible_words:
-        i=0
-        while i < 5:
-            if solution[i] == word[i]:
-                if yellows:
-                   for item in yellows:
-                       if item["letter"] in word:
-                           matches.append(word)
-                else:
-                    matches.append(word)
-            i+=1
+    # Get all possible combinations of letters
+    combos = list(itertools.product(*wordle))
 
-    for word in matches:
-        i=0
-        while i < 5:
-            for item in yellows:
-                if i == item["not"] and item["letter"] == word[i] and word in matches:
-                    matches.remove(word)
-                    break
-            i+=1
+    # Run through the combinations and check to see if it's a word
+    for combo in combos:
+        word = ""
+        x=0
+        while x < 5:
+            word += combo[x]
+            x+=1
+        if d.check(word) == True:
+            possible_words.append(word)
 
-    maybes = []
-    list_of_all_values = []               
+    filtered_words = []
+    if yellows:
+        for word in possible_words:
+            print(word)
+            check = any(yellow in word for yellow in yellows)
+            if check == True:
+                filtered_words.append(word)
+            
 
-    for m in matches:
-        dupes = matches.count(m)
-        if dupes >= 2 and m not in list_of_all_values:
-            maybes.append({
-                "word":m,
-                "score":dupes
-            })
-            list_of_all_values = [value for elem in maybes for value in elem.values()]
-
-    sorted_maybes = sorted(maybes, key=itemgetter("score"), reverse=True)
-
-    return sorted_maybes
-
-
-# List of good starting words according to the internets
-starters = ["soare","roate","raise"]
-
-# Grab a random start word
-first_choice = random.choice(starters)
+    print(filtered_words)
+        
 
 # Show the selected word that we're starting with.
 # User will have to enter this word into the game so we can get our hints.
-print("\n*** First try: {} ***\n".format(first_choice.upper()))
+print("\n*** First try: {} ***\n".format(first_try.upper()))
 
-# Ask the user to enter the hints returned from our first attempt
-word_data = userColorInput(first_choice)
+word_data = userColorInput(first_try)
 
-# Start building the solution, populate our placeholders
-buildLetterCollections(word_data)
+processAttempt(word_data)
 
-# Generate possible letter combos based on letters removed from alphabet
-# TODO: This step needs to be optimized, it's way too slow.
-next_choices = generateAnswers()
-
-print("*** Best words for next try: ***")
-for item in next_choices:
-    print("{} ({})".format(item["word"].upper(),item["score"]))
-
-# Ask the user to enter a word from the suggestions provided
-# TODO: Automate this part 
-second_try = str(input("Enter your second try: "))
-
-# Ask the user to enter the hints returned from the second attempt
-second_data = userColorInput(second_try)
-
-buildLetterCollections(second_data)
-
-next_choices = generateAnswers()
-
-print("*** Best words for next try: ***")
-for item in next_choices:
-    print("{} ({})".format(item["word"].upper(),item["score"]))
+next_choices = generateNextChoice()
